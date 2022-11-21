@@ -494,7 +494,7 @@ class PslTypVlanId(PslTyp):
     def pack_port(self, ports):
         "helper method to pack ports to binary"
         rtn = 0
-        if ports == "":
+        if ports == "" or ports == "-":  # convenience to avoid ""
             return rtn
         for port in ports.split(","):
             rtn = rtn + self.BIN_PORTS[int(port)]
@@ -535,30 +535,30 @@ class PslTypVlan802Id(PslTypVlanId):
     def unpack_py(self, value):
         # Python 3 uses an array of bytes, Python 2 uses a string
         if type(value) is str:
-            tagged_ports = struct.unpack(">B", value[2])[0]
-            untagged_ports = struct.unpack(">B", value[3])[0]
+            member_ports = struct.unpack(">B", value[2])[0]
+            tagged_ports = struct.unpack(">B", value[3])[0]
         else:
-            tagged_ports = value[2]
-            untagged_ports = value[3]
+            member_ports = value[2]
+            tagged_ports = value[3]
+        out_member_ports = []
         out_tagged_ports = []
-        out_untagged_ports = []
         for port in list(self.BIN_PORTS.keys()):
+            if (member_ports & self.BIN_PORTS[port] > 0):
+                out_member_ports.append(port)
             if (tagged_ports & self.BIN_PORTS[port] > 0):
                 out_tagged_ports.append(port)
-            if (untagged_ports & self.BIN_PORTS[port] > 0):
-                out_untagged_ports.append(port)
         rtn = {
             "vlan_id": struct.unpack(">h", value[0:2])[0],
-            "tagged_ports": out_tagged_ports,
-            "untagged_ports": out_untagged_ports
+            "member_ports": out_member_ports,
+            "tagged_ports": out_tagged_ports
         }
         return rtn
         
 
     def pack_py(self, value):
         tagged = self.pack_port(value[1])
-        untagged = self.pack_port(value[2])
-        rtn = struct.pack(">hBB", int(value[0]), tagged, untagged)
+        member = self.pack_port(value[2])
+        rtn = struct.pack(">hBB", int(value[0]), tagged, member)
         return rtn
 
     def unpack_cmd(self, value):
@@ -568,22 +568,22 @@ class PslTypVlan802Id(PslTypVlanId):
         return 3
 
     def get_metavar(self):
-        return ("VLAN_ID", "TAGGED_PORTS", "UNTAGGED_PORTS")
+        return ("VLAN_ID", "MEMBER_PORTS", "TAGGED_PORTS")
 
     def print_result(self, value):
         print("%-30s%7s %14s %s" % (self.get_name().capitalize(), "VLAN_ID",
-                                      "Tagged-Ports","Untagged-Ports"))
+                                      "Member-Ports","Tagged-Ports"))
         if type(value) is list:
             for row in value:
                 print("%-30s%7d %14s %s" % ("",
                         int(row["vlan_id"]),
-                        ",".join([str(x) for x in row["tagged_ports"]]),
-                        ",".join([str(x) for x in row["untagged_ports"]])))
+                        ",".join([str(x) for x in row["member_ports"]]),
+                        ",".join([str(x) for x in row["tagged_ports"]])))
         else:
             print("%-30s%7d %14s %s" % ("",
                         int(value["vlan_id"]),
-                        ",".join([str(x) for x in value["tagged_ports"]]),
-                        ",".join([str(x) for x in value["untagged_ports"]])))
+                        ",".join([str(x) for x in value["member_ports"]]),
+                        ",".join([str(x) for x in value["tagged_ports"]])))
           
 
         

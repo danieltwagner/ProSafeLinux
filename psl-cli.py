@@ -13,6 +13,7 @@ import psl_typ
 def discover(args, switch):
     "Search for Switches"
     print("Searching for ProSafe Plus Switches ...\n")
+    found = False
     for data in switch.discover():
         found = True
         for entry in data.keys():
@@ -70,10 +71,7 @@ def query(args, switch, querycommand = None):
         for qarg in args.query:
             if qarg == "all":
                 for k in switch.get_query_cmds():
-                    if ((k != ProSafeLinux.CMD_VLAN_ID) and
-                        (k != ProSafeLinux.CMD_VLAN802_ID)):
-                        #print("--------- " + k.get_name() + " ---------")
-                        query(args, switch, querycommand=k)
+                    query(args, switch, querycommand=k)
                 return
             else:
                 query_cmd.append(switch.get_cmd_by_name(qarg))
@@ -170,11 +168,11 @@ def main():
     query_parser.add_argument("query", nargs="+", help="What to query for",
         choices=choices)
 
-    query_parser = subparsers.add_parser("query_raw",
+    query_parser_raw = subparsers.add_parser("query_raw",
         help="Query raw values from the switch")
-    query_parser.add_argument("--mac", nargs=1,
+    query_parser_raw.add_argument("--mac", nargs=1,
         help="Hardware address of the switch", required=True)
-    query_parser.add_argument("--passwd", nargs=1,
+    query_parser_raw.add_argument("--passwd", nargs=1,
         help="password")
 
     set_parser = subparsers.add_parser("set", help="Set values to the switch")

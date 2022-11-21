@@ -150,7 +150,8 @@ class ProSafeLinux:
     def get_query_cmds(self):
         "return all commands which can be used in a query"
         rtn = []
-        for cmd in list(self.cmd_by_name.values()):
+        for k in sorted(list(self.cmd_by_name.keys())):
+            cmd = self.cmd_by_name[k]
             if cmd.is_queryable():
                 rtn.append(cmd)
         return rtn
@@ -335,24 +336,28 @@ class ProSafeLinux:
         # translate non-list to list
         if type(cmd_arr).__name__ != 'tupe' and type(cmd_arr).__name__ != 'list':
             cmd_arr = (cmd_arr, )
-        self.send_query(cmd_arr, mac, use_ip_func)
-        message, address = self.recv()
-        if with_address:
-            return (self.parse_data(message), address)
-        else:
-            return self.parse_data(message)
 
-    def queryall(self, cmd_arr, mac, with_address=False, use_ip_func=True):
+        for (msg, address) in self.queryall(cmd_arr, mac, use_ip_func):
+            if cmd_arr[0] in msg:
+                if with_address:
+                    return msg, address
+                else:
+                    return msg
+        
+        # failed to get data
+        if with_address:
+            return {}, {}
+        else:
+            return {}
+
+    def queryall(self, cmd_arr, mac, use_ip_func=True):
         "get some values from the switch, but do not change them"
         # translate non-list to list
-        if type(cmd_arr).__name__ != 'tupe' and type(cmd_arr).__name__ != 'list':
+        if type(cmd_arr).__name__ != 'tuple' and type(cmd_arr).__name__ != 'list':
             cmd_arr = (cmd_arr, )
         self.send_query(cmd_arr, mac, use_ip_func)
         for message, address in self.recv_all():
-            if with_address:
-                yield (self.parse_data(message), address)
-            else:
-                yield self.parse_data(message)
+            yield (self.parse_data(message), address)
 
     def transmit(self, cmddict, mac):
         "change something in the switch, like name, mac ..."
@@ -412,7 +417,7 @@ class ProSafeLinux:
                    self.CMD_MAC,
                    self.CMD_DHCP,
                    self.CMD_IP]
-        for message in self.queryall(query_arr, None):
+        for (message, address) in self.queryall(query_arr, None):
             if message != False:
                 self.mac_cache[message[self.CMD_MAC]] = message[self.CMD_IP]
             yield message
